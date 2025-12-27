@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phishing URL Detection</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(120deg, #74ebd5, #9face6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      width: 380px;
+    }
+
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 90%;
+      padding: 10px;
+      font-size: 16px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      background-color: #4caf50;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .safe {
+      background-color: #c8e6c9;
+      color: green;
+    }
+
+    .suspicious {
+      background-color: #fff3cd;
+      color: #ff9800;
+    }
+
+    .phishing {
+      background-color: #f8d7da;
+      color: red;
+    }
+
+    .tips {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Phishing URL Detector</h2>
+    <input type="text" id="urlInput" placeholder="Enter a website URL" onkeypress="handleKeyPress(event)">
+    <button onclick="checkURL()">Check Safety</button>
+    <div id="result" class="result"></div>
+    <div id="tips" class="tips"></div>
+  </div>
+
+  <script>
+    // Function to handle Enter key press
+    function handleKeyPress(event) {
+      if (event.key === "Enter") {
+        checkURL();
+      }
+    }
+
+    function checkURL() {
+      // Normalize input to lowercase to handle 'Http' vs 'http'
+      const originalInput = document.getElementById("urlInput").value.trim();
+      const url = originalInput.toLowerCase();
+      
+      const result = document.getElementById("result");
+      const tips = document.getElementById("tips");
+      let score = 0;
+      let warnings = [];
+
+      if (url.length === 0) {
+        result.textContent = "Please enter a URL.";
+        result.className = "result";
+        tips.textContent = "";
+        return;
+      }
+
+      // Rule 1: Check if "@" is present
+      if (url.includes("@")) {
+        score++;
+        warnings.push("Contains '@' symbol (possible redirection).");
+      }
+
+      // Rule 2: Protocol Check 
+      // Only penalize if it explicitly uses "http://". 
+      // Missing protocol (like "www.google.com") is now treated as neutral.
+      if (url.startsWith("http://")) {
+        score++;
+        warnings.push("Uses insecure HTTP protocol (not HTTPS).");
+      }
+
+      // Rule 3: Check for long URLs
+      if (url.length > 75) {
+        score++;
+        warnings.push("URL is too long (suspicious length).");
+      }
+
+      // Rule 4: Check for too many dots
+      // Added "|| []" to prevent errors if no dots are found
+      const dotCount = (url.match(/\./g) || []).length;
+      if (dotCount > 4) {
+        score++;
+        warnings.push("Too many dots (possible fake subdomain).");
+      }
+
+      // Rule 5: Double slash check (looking for // inside the path)
+      // We start searching after index 7 to skip the initial https:// or http://
+      const indexDoubleSlash = url.indexOf("//", 7);
+      if (indexDoubleSlash !== -1) {
+        score++;
+        warnings.push("Contains '//' inside the path (possible redirection).");
+      }
+
+      // Rule 6: Hyphen Check (Added Rule)
+      // Counts hyphens to catch "secure-verify-account" type URLs
+      const hyphenCount = (url.match(/-/g) || []).length;
+      if (hyphenCount > 3) {
+        score++;
+        warnings.push("Excessive use of hyphens (typical in phishing).");
+      }
+
+      // SCORING THRESHOLDS 
+      // 0      = Safe
+      // 1      = Suspicious
+      // 2 or more = Phishing
+      
+      if (score === 0) {
+        result.textContent = "🟢 Safe Website";
+        result.className = "result safe";
+      } else if (score === 1) {
+        result.textContent = "🟡 Suspicious Website";
+        result.className = "result suspicious";
+      } else {
+        result.textContent = "🔴 Phishing Website Detected!";
+        result.className = "result phishing";
+      }
+
+      // Show tips
+      tips.innerHTML = warnings.length
+        ? "⚠️ Issues found:<br>• " + warnings.join("<br>• ")
+        : "✅ No suspicious signs detected.";
+    }
+  </script>
+</body>
+</html>
